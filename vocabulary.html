@@ -120,12 +120,20 @@ async function lookupWord() {
 
         const entry    = (await dictRes.json())[0];
         lookupPhonetic = entry.phonetic || entry.phonetics?.find(p => p.text)?.text || '';
+        const audioUrl = entry.phonetics?.find(p => p.audio)?.audio || '';
 
-        // Header: word + phonetic
+        // Header: word + phonetic + audio button
         vLookupHeader.innerHTML = `
             <span class="vocab-word">${entry.word}</span>
             ${lookupPhonetic ? `<span class="vocab-phonetic">${lookupPhonetic}</span>` : ''}
+            ${audioUrl ? `<button id="vPlayBtn" class="btn-play" title="播放發音">▶</button>` : ''}
         `;
+
+        if (audioUrl) {
+            document.getElementById('vPlayBtn').addEventListener('click', () => {
+                new Audio(audioUrl).play();
+            });
+        }
 
         // Collect all definitions for batch translation
         const allDefs = (entry.meanings ?? []).flatMap(m =>

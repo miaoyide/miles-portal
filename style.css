@@ -1264,3 +1264,16 @@ body.theme-photo .portal-bg {
     border: 1px solid var(--red);
     color: var(--red);
 }
+
+.btn-play {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--accent);
+    cursor: pointer;
+    transition: border-color 0.15s;
+}
+
+.btn-play:hover { border-color: var(--accent); }
