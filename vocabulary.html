@@ -39,10 +39,20 @@
                     <button id="vLookupBtn" class="btn">查詢</button>
                 </div>
                 <p id="vLookupStatus" class="text-muted text-xs font-mono hidden"></p>
-                <input id="vPhonetic" type="text" class="input" placeholder="音標（自動填入）" />
-                <input id="vDef"      type="text" class="input" placeholder="中文定義 *（自動填入）" />
-                <input id="vExample"  type="text" class="input" placeholder="例句（自動填入）" />
-                <button id="vAddBtn" class="btn">新增</button>
+            </div>
+
+            <!-- Lookup Results -->
+            <div id="vLookupResults" class="hidden">
+                <div id="vLookupHeader" class="lookup-header"></div>
+                <div id="vLookupMeanings" class="lookup-meanings"></div>
+            </div>
+
+            <!-- Save Form (shown after selecting a definition) -->
+            <div id="vSaveForm" class="vocab-form hidden" style="margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border)">
+                <input id="vPhonetic" type="text" class="input" placeholder="音標" />
+                <input id="vDef"      type="text" class="input" placeholder="中文定義 *" />
+                <input id="vExample"  type="text" class="input" placeholder="例句" />
+                <button id="vAddBtn" class="btn">新增至單字庫</button>
             </div>
         </div>
 
@@ -85,58 +95,90 @@ function setLookupStatus(msg, isError = false) {
     vLookupStatus.style.color = isError ? 'var(--red)' : 'var(--muted)';
 }
 
+const vLookupResults = document.getElementById('vLookupResults');
+const vLookupHeader  = document.getElementById('vLookupHeader');
+const vLookupMeanings= document.getElementById('vLookupMeanings');
+const vSaveForm      = document.getElementById('vSaveForm');
+
+const POS_LABEL = { noun:'名詞', verb:'動詞', adjective:'形容詞', adverb:'副詞',
+    pronoun:'代詞', preposition:'介詞', conjunction:'連詞', interjection:'感嘆詞' };
+
+let lookupPhonetic = '';
+
 async function lookupWord() {
     const word = vWord.value.trim();
     if (!word) { vWord.focus(); return; }
 
     setLookupStatus('查詢中...');
     vLookupBtn.disabled = true;
+    vLookupResults.classList.add('hidden');
+    vSaveForm.classList.add('hidden');
 
     try {
-        // 1. Free Dictionary API
         const dictRes = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
         if (!dictRes.ok) { setLookupStatus(`找不到「${word}」的資料`, true); return; }
 
-        const dictData = await dictRes.json();
-        const entry    = dictData[0];
+        const entry    = (await dictRes.json())[0];
+        lookupPhonetic = entry.phonetic || entry.phonetics?.find(p => p.text)?.text || '';
 
-        // 音標
-        const phonetic = entry.phonetic
-            || entry.phonetics?.find(p => p.text)?.text
-            || '';
+        // Header: word + phonetic
+        vLookupHeader.innerHTML = `
+            <span class="vocab-word">${entry.word}</span>
+            ${lookupPhonetic ? `<span class="vocab-phonetic">${lookupPhonetic}</span>` : ''}
+        `;
 
-        // 第一個英文定義 + 例句
-        let engDef  = '';
-        let example = '';
-        for (const meaning of entry.meanings ?? []) {
-            for (const def of meaning.definitions ?? []) {
-                if (!engDef) engDef = def.definition;
-                if (!example && def.example) example = def.example;
-                if (engDef && example) break;
-            }
-            if (engDef && example) break;
-        }
+        // All meanings + definitions
+        vLookupMeanings.innerHTML = '';
+        (entry.meanings ?? []).forEach(meaning => {
+            const posLabel = POS_LABEL[meaning.partOfSpeech] || meaning.partOfSpeech;
+            const section  = document.createElement('div');
+            section.className = 'lookup-pos-section';
+            section.innerHTML = `<div class="lookup-pos-label">${posLabel}</div>`;
 
-        vPhonetic.value = phonetic;
-        vExample.value  = example;
-
-        // 2. DeepL 翻譯定義成中文
-        if (engDef) {
-            setLookupStatus('翻譯中...');
-            const transRes  = await fetch(`${SUPABASE_URL}/functions/v1/deepl`, {
-                method: 'POST',
-                headers: { ...dbHeaders },
-                body: JSON.stringify({ text: engDef }),
+            (meaning.definitions ?? []).forEach((def, i) => {
+                const item = document.createElement('div');
+                item.className = 'lookup-def-item';
+                item.innerHTML = `
+                    <div class="lookup-def-text">
+                        <span class="lookup-def-num">${i + 1}.</span>
+                        <span>${def.definition}</span>
+                    </div>
+                    ${def.example ? `<div class="lookup-example">"${def.example}"</div>` : ''}
+                    <button class="btn-select-def">選用此定義</button>
+                `;
+                item.querySelector('.btn-select-def').addEventListener('click', () => selectDef(def));
+                section.appendChild(item);
             });
-            const transData = await transRes.json();
-            vDef.value = transData.translated || engDef;
-        }
 
-        setLookupStatus('✓ 已自動填入，請確認後按新增');
+            vLookupMeanings.appendChild(section);
+        });
+
+        vLookupResults.classList.remove('hidden');
+        setLookupStatus('點選「選用此定義」以翻譯並填入');
     } catch (err) {
         setLookupStatus('查詢失敗：' + err.message, true);
     } finally {
         vLookupBtn.disabled = false;
+    }
+}
+
+async function selectDef(def) {
+    setLookupStatus('翻譯中...');
+    try {
+        const transRes  = await fetch(`${SUPABASE_URL}/functions/v1/deepl`, {
+            method: 'POST',
+            headers: { ...dbHeaders },
+            body: JSON.stringify({ text: def.definition }),
+        });
+        const transData = await transRes.json();
+        vPhonetic.value = lookupPhonetic;
+        vDef.value      = transData.translated || def.definition;
+        vExample.value  = def.example || '';
+        vSaveForm.classList.remove('hidden');
+        vSaveForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        setLookupStatus('✓ 已填入，確認後按「新增至單字庫」');
+    } catch (err) {
+        setLookupStatus('翻譯失敗：' + err.message, true);
     }
 }
 
