@@ -1,5 +1,10 @@
 /* ─── Theme ───────────────────────────────────── */
 
+/* ─── Supabase ────────────────────────────────── */
+
+const SUPABASE_URL      = 'https://naagujwufjeqsgwmyrcv.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5hYWd1and1ZmplcXNnd215cmN2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzMjc0MTcsImV4cCI6MjA4ODkwMzQxN30.6MFjNVe2zz1lwGVYx9BSFco7hEZTjvBueGQABrq1apM';
+
 const UNSPLASH_QUERY = 'query=landscape,nature&orientation=landscape';
 
 const themeBtns      = document.querySelectorAll('.theme-btn');
@@ -642,9 +647,6 @@ fetchCrypto();
 /* ─── Reminders ───────────────────────────────── */
 
 // ── Telegram ──
-
-const SUPABASE_URL      = 'https://naagujwufjeqsgwmyrcv.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5hYWd1and1ZmplcXNnd215cmN2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzMjc0MTcsImV4cCI6MjA4ODkwMzQxN30.6MFjNVe2zz1lwGVYx9BSFco7hEZTjvBueGQABrq1apM';
 
 async function sendTelegram(text) {
     try {
