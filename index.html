@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Miles' Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="portal-bg min-h-screen p-6 md:p-10">
+
+        <!-- Header -->
+        <header class="mb-8 flex items-start justify-between">
+            <div>
+                <h1 class="text-2xl font-mono font-bold text-accent">// Miles' Portal</h1>
+                <p class="text-muted text-sm font-mono mt-1">Personal dashboard</p>
+            </div>
+
+            <!-- Theme Switcher -->
+            <div class="flex items-center gap-2">
+                <button id="refreshPhotoBtn" class="btn-refresh hidden" title="換一張圖片">↻</button>
+                <div class="theme-switcher">
+                    <button class="theme-btn active" data-theme="dark"  title="深色模式">🌑</button>
+                    <button class="theme-btn"        data-theme="light" title="淺色模式">☀️</button>
+                    <button class="theme-btn"        data-theme="photo" title="動態背景">🖼️</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Widget Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
+
+            <!-- Weather Widget -->
+            <div class="card">
+                <h2 class="widget-title">⛅ 天氣</h2>
+
+                <!-- City Tabs -->
+                <div class="weather-tabs">
+                    <button class="weather-tab active" data-tab="local">當前位置</button>
+                    <button class="weather-tab" data-tab="taipei">Taipei</button>
+                    <button class="weather-tab" data-tab="taichung">Taichung</button>
+                    <button class="weather-tab" data-tab="tainan">Tainan</button>
+                </div>
+
+                <!-- Shared display panel -->
+                <div id="weatherLoading" class="status-msg">定位中...</div>
+                <div id="weatherError"   class="error-msg hidden"></div>
+                <div id="weatherResult"  class="weather-result hidden">
+                    <div class="weather-card-inner">
+                        <img id="weatherIcon" src="" alt="" class="w-14 h-14" />
+                        <div>
+                            <p id="weatherCityName" class="font-semibold text-primary"></p>
+                            <p id="weatherDesc" class="text-muted text-xs capitalize"></p>
+                        </div>
+                        <p id="weatherTemp" class="text-3xl font-mono font-bold text-accent ml-auto"></p>
+                    </div>
+                    <div class="weather-meta">
+                        <span>💧 <span id="weatherHumidity"></span>%</span>
+                        <span>💨 <span id="weatherWind"></span> m/s</span>
+                    </div>
+                    <div id="forecastLoading" class="status-msg hidden">載入預報中...</div>
+                    <div id="forecastList" class="forecast-list hidden"></div>
+                </div>
+
+                <div class="weather-divider"></div>
+
+                <!-- 查詢城市 -->
+                <p class="weather-section-label">查詢城市</p>
+                <div class="flex gap-2 mb-3">
+                    <input id="cityInput" type="text" placeholder="輸入城市（英文）" class="input flex-1" />
+                    <button id="searchBtn" class="btn">查詢</button>
+                    <button id="clearBtn" class="btn-clear hidden" title="清空">✕</button>
+                </div>
+                <div id="searchLoading" class="status-msg hidden">查詢中...</div>
+                <div id="searchError"   class="error-msg hidden"></div>
+                <div id="searchResult"  class="weather-result hidden">
+                    <div class="weather-card-inner">
+                        <img id="searchIcon" src="" alt="" class="w-14 h-14" />
+                        <div>
+                            <p id="searchCityName" class="font-semibold text-primary"></p>
+                            <p id="searchDesc" class="text-muted text-xs capitalize"></p>
+                        </div>
+                        <p id="searchTemp" class="text-3xl font-mono font-bold text-accent ml-auto"></p>
+                    </div>
+                    <div class="weather-meta">
+                        <span>💧 <span id="searchHumidity"></span>%</span>
+                        <span>💨 <span id="searchWind"></span> m/s</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Currency Widget -->
+            <div class="card">
+                <div class="currency-title-row">
+                    <h2 class="widget-title">💱 即時匯率</h2>
+                    <a href="https://rate.bot.com.tw/xrt?Lang=zh-TW" target="_blank" rel="noopener" class="currency-ext-link" title="台灣銀行牌告匯率">台灣銀行 ↗</a>
+                </div>
+
+                <div id="currencyLoading" class="status-msg">載入中...</div>
+                <div id="currencyError"   class="error-msg hidden"></div>
+
+                <div id="currencyResult" class="hidden">
+                    <!-- 模式切換 -->
+                    <div class="currency-mode-tabs">
+                        <button class="currency-mode-tab active" data-mode="twd">TWD 換算</button>
+                        <button class="currency-mode-tab" data-mode="foreign">外幣換算</button>
+                    </div>
+
+                    <!-- TWD 換算輸入 -->
+                    <div id="twdModeInput" class="mb-3">
+                        <input id="twdInput" type="number" placeholder="輸入新台幣金額" class="input" value="1000" />
+                    </div>
+
+                    <!-- 外幣換算輸入 -->
+                    <div id="foreignModeInput" class="currency-foreign-row hidden mb-3">
+                        <select id="foreignCurrencySelect" class="input currency-foreign-select"></select>
+                        <input id="foreignAmountInput" type="number" placeholder="金額" class="input flex-1" value="100" />
+                    </div>
+
+                    <div id="rateList" class="space-y-2"></div>
+                    <p id="rateUpdated" class="text-xs text-muted font-mono mt-4 text-right"></p>
+                </div>
+            </div>
+
+            <!-- Stock Widget -->
+            <div class="card md:col-span-2">
+                <h2 class="widget-title">📈 台股自選</h2>
+
+                <div id="stockLoading" class="status-msg">載入中...</div>
+                <div id="stockError"   class="error-msg hidden"></div>
+
+                <div id="stockResult" class="hidden">
+                    <div id="stockList" class="stock-grid"></div>
+                    <p id="stockUpdated" class="text-xs text-muted font-mono mt-4 text-right"></p>
+                </div>
+            </div>
+
+            <!-- Crypto Widget -->
+            <div class="card">
+                <h2 class="widget-title">₿ 加密貨幣 <span class="text-xs text-muted font-normal">（Binance）</span></h2>
+
+                <div id="cryptoLoading" class="status-msg">載入中...</div>
+                <div id="cryptoError"   class="error-msg hidden"></div>
+
+                <div id="cryptoResult" class="hidden">
+                    <div id="cryptoList" class="space-y-2"></div>
+                    <p id="cryptoUpdated" class="text-xs text-muted font-mono mt-4 text-right"></p>
+                </div>
+            </div>
+
+            <!-- Reminder Widget -->
+            <div class="card">
+                <div class="reminder-card-header">
+                    <h2 class="widget-title">⏰ 定時提醒</h2>
+                    <button id="openReminderModalBtn" class="btn reminder-add-btn">＋ 新增</button>
+                </div>
+
+<div id="unifiedReminderList" class="reminder-list"></div>
+                <p id="unifiedReminderEmpty" class="text-muted text-xs font-mono text-center" style="padding:1rem 0;">尚無提醒，點擊「＋ 新增」開始設定</p>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Reminder Modal -->
+    <div id="reminderModal" class="modal-overlay hidden">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 class="modal-title">新增提醒</h3>
+                <button id="closeReminderModalBtn" class="modal-close">✕</button>
+            </div>
+
+            <!-- Type tabs -->
+            <div class="modal-tabs">
+                <button class="modal-tab active" data-type="daily">每日定時</button>
+                <button class="modal-tab"        data-type="interval">固定間隔</button>
+            </div>
+
+            <!-- Label -->
+            <div class="modal-field">
+                <label class="modal-label">提醒內容</label>
+                <input id="modalLabel" type="text" class="input" placeholder="輸入提醒內容" maxlength="40" />
+            </div>
+
+            <!-- Daily fields -->
+            <div id="modalDailyFields" class="modal-field">
+                <label class="modal-label">每天觸發時間</label>
+                <input id="modalTime" type="time" class="input modal-time-input" />
+            </div>
+
+            <!-- Interval fields -->
+            <div id="modalIntervalFields" class="modal-field hidden">
+                <label class="modal-label">間隔時間</label>
+                <div class="modal-interval-row">
+                    <input id="modalIntervalValue" type="number" min="1" max="1440" class="input" value="30" />
+                    <select id="modalIntervalUnit" class="input modal-interval-unit">
+                        <option value="60000">分鐘</option>
+                        <option value="3600000">小時</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button id="cancelReminderBtn" class="btn-clear">取消</button>
+                <button id="confirmReminderBtn" class="btn">新增</button>
+            </div>
+        </div>
+    </div>
+
+<script src="script.js"></script>
+</body>
+</html>
