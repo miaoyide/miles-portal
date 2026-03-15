@@ -1,7 +1,6 @@
 /* ─── Theme ───────────────────────────────────── */
 
-const UNSPLASH_ACCESS_KEY = 'nW1-co1S6YCdhN0wp2M7Qi-mchHnhDWUJ9jeGLZLPI8'; // 替換成你的 Unsplash Access Key
-const UNSPLASH_URL = 'https://api.unsplash.com/photos/random?query=landscape,nature&orientation=landscape';
+const UNSPLASH_QUERY = 'query=landscape,nature&orientation=landscape';
 
 const themeBtns      = document.querySelectorAll('.theme-btn');
 const refreshPhotoBtn = document.getElementById('refreshPhotoBtn');
@@ -26,7 +25,9 @@ async function loadUnsplashPhoto() {
     refreshPhotoBtn.classList.add('spinning');
 
     try {
-        const res = await fetch(`${UNSPLASH_URL}&client_id=${UNSPLASH_ACCESS_KEY}`);
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/unsplash?${UNSPLASH_QUERY}`, {
+            headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
+        });
         if (!res.ok) throw new Error();
         const data = await res.json();
 
@@ -53,9 +54,7 @@ refreshPhotoBtn.addEventListener('click', loadUnsplashPhoto);
 
 /* ─── Weather ─────────────────────────────────── */
 
-const WEATHER_API_KEY = '98c2dc5c164d549a9eced66ac3d86c0e';
-const WEATHER_URL     = 'https://api.openweathermap.org/data/2.5/weather';
-const FORECAST_URL    = 'https://api.openweathermap.org/data/2.5/forecast';
+const WEATHER_FN = `${SUPABASE_URL}/functions/v1/weather`;
 
 const WEATHER_TABS = [
     { id: 'local',     label: '當前位置', type: 'geo' },
@@ -68,8 +67,10 @@ const weatherCache = {}; // { tabId: { current, forecast } }
 let activeWeatherTab = 'local';
 
 async function fetchWeatherData(params) {
-    const query = new URLSearchParams({ ...params, appid: WEATHER_API_KEY, units: 'metric', lang: 'zh_tw' });
-    const res = await fetch(`${WEATHER_URL}?${query}`);
+    const query = new URLSearchParams({ ...params, units: 'metric', lang: 'zh_tw', endpoint: 'weather' });
+    const res = await fetch(`${WEATHER_FN}?${query}`, {
+        headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
+    });
     if (!res.ok) {
         const msg = res.status === 404 ? '找不到城市資料'
                   : res.status === 401 ? 'API Key 無效'
@@ -137,8 +138,10 @@ function renderForecastPanel(forecastData) {
 }
 
 async function fetchForecastData(lat, lon) {
-    const query = new URLSearchParams({ lat, lon, appid: WEATHER_API_KEY, units: 'metric', lang: 'zh_tw', cnt: 40 });
-    const res = await fetch(`${FORECAST_URL}?${query}`);
+    const query = new URLSearchParams({ lat, lon, units: 'metric', lang: 'zh_tw', cnt: 40, endpoint: 'forecast' });
+    const res = await fetch(`${WEATHER_FN}?${query}`, {
+        headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
+    });
     if (!res.ok) return null;
     return res.json();
 }
@@ -219,8 +222,10 @@ async function searchCity() {
     document.getElementById('searchError').classList.add('hidden');
     document.getElementById('searchResult').classList.add('hidden');
     try {
-        const query = new URLSearchParams({ q: city, appid: WEATHER_API_KEY, units: 'metric', lang: 'zh_tw' });
-        const res = await fetch(`${WEATHER_URL}?${query}`);
+        const query = new URLSearchParams({ q: city, units: 'metric', lang: 'zh_tw', endpoint: 'weather' });
+        const res = await fetch(`${WEATHER_FN}?${query}`, {
+            headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
+        });
         if (!res.ok) throw new Error(res.status === 404 ? '找不到該城市，請確認英文拼寫' : `查詢失敗（${res.status}）`);
         const data = await res.json();
         document.getElementById('searchIcon').src            = `https://openweathermap.org/img/wn/${data.weather[0].icon}@2x.png`;
