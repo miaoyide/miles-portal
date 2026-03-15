@@ -167,6 +167,19 @@ async function lookupWord() {
                 section.appendChild(item);
             });
 
+            // 反義詞（meaning 層 + definition 層合併去重）
+            const antonyms = [
+                ...(meaning.antonyms ?? []),
+                ...(meaning.definitions ?? []).flatMap(d => d.antonyms ?? []),
+            ];
+            const uniqueAntonyms = [...new Set(antonyms)];
+            if (uniqueAntonyms.length > 0) {
+                const row = document.createElement('div');
+                row.className = 'lookup-antonyms';
+                row.innerHTML = `<span class="lookup-antonym-label">反義詞</span>${uniqueAntonyms.map(a => `<span class="lookup-antonym-tag">${a}</span>`).join('')}`;
+                section.appendChild(row);
+            }
+
             vLookupMeanings.appendChild(section);
         });
 
