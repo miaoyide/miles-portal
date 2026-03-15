@@ -12,21 +12,27 @@
     <div class="portal-bg min-h-screen p-6 md:p-10">
 
         <!-- Header -->
-        <header class="mb-8 flex items-start justify-between">
-            <div>
-                <h1 class="text-2xl font-mono font-bold text-accent">// Miles' Portal</h1>
-                <p class="text-muted text-sm font-mono mt-1">Personal dashboard</p>
-            </div>
-
-            <!-- Theme Switcher -->
-            <div class="flex items-center gap-2">
-                <button id="refreshPhotoBtn" class="btn-refresh hidden" title="換一張圖片">↻</button>
-                <div class="theme-switcher">
-                    <button class="theme-btn active" data-theme="dark"  title="深色模式">🌑</button>
-                    <button class="theme-btn"        data-theme="light" title="淺色模式">☀️</button>
-                    <button class="theme-btn"        data-theme="photo" title="動態背景">🖼️</button>
+        <header class="mb-8">
+            <div class="flex items-start justify-between mb-3">
+                <div>
+                    <h1 class="text-2xl font-mono font-bold text-accent">// Miles' Portal</h1>
+                    <p class="text-muted text-sm font-mono mt-1">Personal dashboard</p>
+                </div>
+                <!-- Theme Switcher -->
+                <div class="flex items-center gap-2">
+                    <button id="refreshPhotoBtn" class="btn-refresh hidden" title="換一張圖片">↻</button>
+                    <div class="theme-switcher">
+                        <button class="theme-btn active" data-theme="dark"  title="深色模式">🌑</button>
+                        <button class="theme-btn"        data-theme="light" title="淺色模式">☀️</button>
+                        <button class="theme-btn"        data-theme="photo" title="動態背景">🖼️</button>
+                    </div>
                 </div>
             </div>
+            <nav class="portal-nav">
+                <a href="index.html"      class="nav-link active">首頁</a>
+                <a href="vocabulary.html" class="nav-link">單字庫</a>
+                <a href="accounting.html" class="nav-link">記帳</a>
+            </nav>
         </header>
 
         <!-- Widget Grid -->
@@ -210,6 +216,7 @@
         </div>
     </div>
 
+<script src="config.js"></script>
 <script src="script.js"></script>
 </body>
 </html>

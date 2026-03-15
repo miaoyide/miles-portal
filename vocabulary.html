@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>單字庫 — Miles' Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="portal-bg min-h-screen p-6 md:p-10">
+
+    <header class="mb-8">
+        <div class="flex items-start justify-between mb-3">
+            <div>
+                <h1 class="text-2xl font-mono font-bold text-accent">// Miles' Portal</h1>
+                <p class="text-muted text-sm font-mono mt-1">Vocabulary</p>
+            </div>
+            <div class="theme-switcher">
+                <button class="theme-btn" data-theme="dark"  title="深色模式">🌑</button>
+                <button class="theme-btn" data-theme="light" title="淺色模式">☀️</button>
+            </div>
+        </div>
+        <nav class="portal-nav">
+            <a href="index.html"      class="nav-link">首頁</a>
+            <a href="vocabulary.html" class="nav-link active">單字庫</a>
+            <a href="accounting.html" class="nav-link">記帳</a>
+        </nav>
+    </header>
+
+    <div class="max-w-4xl space-y-6">
+
+        <!-- Add Word -->
+        <div class="card">
+            <h2 class="widget-title mb-4">➕ 新增單字</h2>
+            <div class="vocab-form">
+                <input id="vWord"    type="text" class="input" placeholder="單字 *" />
+                <input id="vPhonetic" type="text" class="input" placeholder="音標（選填）" />
+                <input id="vDef"     type="text" class="input" placeholder="定義 *" />
+                <input id="vExample" type="text" class="input" placeholder="例句（選填）" />
+                <button id="vAddBtn" class="btn">新增</button>
+            </div>
+        </div>
+
+        <!-- Word List -->
+        <div class="card">
+            <div class="vocab-toolbar">
+                <input id="vSearch" type="text" class="input flex-1" placeholder="搜尋單字..." />
+                <div class="vocab-filter-tabs">
+                    <button class="vocab-filter active" data-filter="all">全部</button>
+                    <button class="vocab-filter" data-filter="unlearned">未學</button>
+                    <button class="vocab-filter" data-filter="learned">已學</button>
+                </div>
+            </div>
+            <p id="vEmpty" class="text-muted text-xs font-mono text-center py-6 hidden">尚無單字</p>
+            <div id="vList" class="vocab-list"></div>
+        </div>
+
+    </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+const DB = `${SUPABASE_URL}/rest/v1/vocabulary`;
+let allWords = [];
+let currentFilter = 'all';
+
+const vList    = document.getElementById('vList');
+const vEmpty   = document.getElementById('vEmpty');
+const vSearch  = document.getElementById('vSearch');
+const vWord    = document.getElementById('vWord');
+const vPhonetic= document.getElementById('vPhonetic');
+const vDef     = document.getElementById('vDef');
+const vExample = document.getElementById('vExample');
+
+async function loadWords() {
+    const res  = await fetch(`${DB}?order=created_at.desc`, { headers: dbHeaders });
+    allWords   = await res.json();
+    renderWords();
+}
+
+function renderWords() {
+    const q      = vSearch.value.trim().toLowerCase();
+    const filter = currentFilter;
+    let list = allWords.filter(w => {
+        if (filter === 'learned'   && !w.learned) return false;
+        if (filter === 'unlearned' &&  w.learned) return false;
+        if (q && !w.word.toLowerCase().includes(q) && !w.definition.toLowerCase().includes(q)) return false;
+        return true;
+    });
+    vEmpty.classList.toggle('hidden', list.length > 0);
+    vList.innerHTML = '';
+    list.forEach(w => {
+        const card = document.createElement('div');
+        card.className = `vocab-card${w.learned ? ' learned' : ''}`;
+        card.innerHTML = `
+            <div class="vocab-card-top">
+                <div>
+                    <span class="vocab-word">${w.word}</span>
+                    ${w.phonetic ? `<span class="vocab-phonetic">${w.phonetic}</span>` : ''}
+                </div>
+                <div class="vocab-actions">
+                    <button class="btn-learn" data-id="${w.id}" data-learned="${w.learned}" title="${w.learned ? '標記未學' : '標記已學'}">
+                        ${w.learned ? '✓ 已學' : '學習'}
+                    </button>
+                    <button class="reminder-delete" data-id="${w.id}">✕</button>
+                </div>
+            </div>
+            <p class="vocab-def">${w.definition}</p>
+            ${w.example ? `<p class="vocab-example">"${w.example}"</p>` : ''}
+        `;
+        card.querySelector('.btn-learn').addEventListener('click', async e => {
+            const id      = e.currentTarget.dataset.id;
+            const learned = e.currentTarget.dataset.learned === 'true';
+            await fetch(`${DB}?id=eq.${id}`, {
+                method: 'PATCH',
+                headers: { ...dbHeaders, 'Prefer': 'return=representation' },
+                body: JSON.stringify({ learned: !learned }),
+            });
+            const w = allWords.find(x => String(x.id) === id);
+            if (w) w.learned = !learned;
+            renderWords();
+        });
+        card.querySelector('.reminder-delete').addEventListener('click', async e => {
+            const id = e.currentTarget.dataset.id;
+            await fetch(`${DB}?id=eq.${id}`, { method: 'DELETE', headers: dbHeaders });
+            allWords = allWords.filter(x => String(x.id) !== id);
+            renderWords();
+        });
+        vList.appendChild(card);
+    });
+}
+
+document.getElementById('vAddBtn').addEventListener('click', async () => {
+    const word = vWord.value.trim();
+    const def  = vDef.value.trim();
+    if (!word || !def) { if (!word) vWord.focus(); else vDef.focus(); return; }
+    const res  = await fetch(DB, {
+        method: 'POST',
+        headers: { ...dbHeaders, 'Prefer': 'return=representation' },
+        body: JSON.stringify({ word, phonetic: vPhonetic.value.trim() || null, definition: def, example: vExample.value.trim() || null }),
+    });
+    const rows = await res.json();
+    allWords.unshift(rows[0]);
+    vWord.value = ''; vPhonetic.value = ''; vDef.value = ''; vExample.value = '';
+    renderWords();
+});
+
+vSearch.addEventListener('input', renderWords);
+
+document.querySelectorAll('.vocab-filter').forEach(btn => {
+    btn.addEventListener('click', () => {
+        currentFilter = btn.dataset.filter;
+        document.querySelectorAll('.vocab-filter').forEach(b => b.classList.toggle('active', b === btn));
+        renderWords();
+    });
+});
+
+document.querySelectorAll('.theme-btn').forEach(btn =>
+    btn.addEventListener('click', () => applyThemeBase(btn.dataset.theme))
+);
+
+[vWord, vPhonetic, vDef, vExample].forEach((el, i, arr) => {
+    el.addEventListener('keydown', e => {
+        if (e.key === 'Enter') i < arr.length - 1 ? arr[i+1].focus() : document.getElementById('vAddBtn').click();
+    });
+});
+
+loadWords();
+</script>
+</body>
+</html>

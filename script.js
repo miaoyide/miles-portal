@@ -2,9 +2,8 @@
 
 /* ─── Supabase ────────────────────────────────── */
 
-const SUPABASE_URL      = 'https://naagujwufjeqsgwmyrcv.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5hYWd1and1ZmplcXNnd215cmN2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzMjc0MTcsImV4cCI6MjA4ODkwMzQxN30.6MFjNVe2zz1lwGVYx9BSFco7hEZTjvBueGQABrq1apM';
-const PORTAL_SECRET     = '3a81f5833dc5973c011454c8fd538af1405410dc885230ae';
+// SUPABASE_URL and SUPABASE_ANON_KEY come from config.js
+const PORTAL_SECRET = '3a81f5833dc5973c011454c8fd538af1405410dc885230ae';
 
 const sbHeaders = {
     'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,

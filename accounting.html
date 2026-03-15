@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>記帳 — Miles' Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="portal-bg min-h-screen p-6 md:p-10">
+
+    <header class="mb-8">
+        <div class="flex items-start justify-between mb-3">
+            <div>
+                <h1 class="text-2xl font-mono font-bold text-accent">// Miles' Portal</h1>
+                <p class="text-muted text-sm font-mono mt-1">Accounting</p>
+            </div>
+            <div class="theme-switcher">
+                <button class="theme-btn" data-theme="dark"  title="深色模式">🌑</button>
+                <button class="theme-btn" data-theme="light" title="淺色模式">☀️</button>
+            </div>
+        </div>
+        <nav class="portal-nav">
+            <a href="index.html"      class="nav-link">首頁</a>
+            <a href="vocabulary.html" class="nav-link">單字庫</a>
+            <a href="accounting.html" class="nav-link active">記帳</a>
+        </nav>
+    </header>
+
+    <div class="max-w-4xl space-y-6">
+
+        <!-- Summary -->
+        <div class="acct-summary-grid">
+            <div class="acct-summary-card">
+                <p class="acct-summary-label">本月收入</p>
+                <p id="sumIncome"  class="acct-summary-value text-green">—</p>
+            </div>
+            <div class="acct-summary-card">
+                <p class="acct-summary-label">本月支出</p>
+                <p id="sumExpense" class="acct-summary-value text-red">—</p>
+            </div>
+            <div class="acct-summary-card">
+                <p class="acct-summary-label">本月餘額</p>
+                <p id="sumBalance" class="acct-summary-value">—</p>
+            </div>
+        </div>
+
+        <!-- Add Transaction -->
+        <div class="card">
+            <h2 class="widget-title mb-4">➕ 新增記錄</h2>
+            <div class="acct-form">
+                <div class="acct-type-tabs">
+                    <button class="acct-type-btn active" data-type="expense">支出</button>
+                    <button class="acct-type-btn"        data-type="income">收入</button>
+                </div>
+                <input  id="aAmount"   type="number" class="input" placeholder="金額 *" min="0" />
+                <select id="aCategory" class="input"></select>
+                <input  id="aNote"     type="text"   class="input" placeholder="備註（選填）" />
+                <input  id="aDate"     type="date"   class="input" />
+                <button id="aAddBtn"   class="btn">新增</button>
+            </div>
+        </div>
+
+        <!-- Transaction List -->
+        <div class="card">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="widget-title">📋 記錄</h2>
+                <input id="aMonthPicker" type="month" class="input" style="width:auto" />
+            </div>
+            <p id="aEmpty" class="text-muted text-xs font-mono text-center py-6 hidden">本月尚無記錄</p>
+            <div id="aList" class="acct-list"></div>
+        </div>
+
+    </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+const DB = `${SUPABASE_URL}/rest/v1/transactions`;
+
+const CATEGORIES = {
+    expense: ['餐飲', '交通', '購物', '娛樂', '醫療', '住宿', '教育', '其他'],
+    income:  ['薪資', '投資', '兼職', '其他'],
+};
+
+let currentType = 'expense';
+let transactions = [];
+
+const aAmount    = document.getElementById('aAmount');
+const aCategory  = document.getElementById('aCategory');
+const aNote      = document.getElementById('aNote');
+const aDate      = document.getElementById('aDate');
+const aList      = document.getElementById('aList');
+const aEmpty     = document.getElementById('aEmpty');
+const monthPicker= document.getElementById('aMonthPicker');
+
+// Init defaults
+aDate.value = new Date().toISOString().slice(0, 10);
+monthPicker.value = new Date().toISOString().slice(0, 7);
+
+function setCategories(type) {
+    aCategory.innerHTML = CATEGORIES[type].map(c => `<option>${c}</option>`).join('');
+}
+setCategories(currentType);
+
+document.querySelectorAll('.acct-type-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        currentType = btn.dataset.type;
+        document.querySelectorAll('.acct-type-btn').forEach(b => b.classList.toggle('active', b === btn));
+        setCategories(currentType);
+    });
+});
+
+function fmt(n) { return Number(n).toLocaleString('zh-TW'); }
+
+async function loadTransactions() {
+    const month = monthPicker.value; // 'YYYY-MM'
+    const from  = `${month}-01`;
+    const to    = `${month}-31`;
+    const res   = await fetch(
+        `${DB}?date=gte.${from}&date=lte.${to}&order=date.desc,created_at.desc`,
+        { headers: dbHeaders }
+    );
+    transactions = await res.json();
+    updateSummary();
+    renderList();
+}
+
+function updateSummary() {
+    const income  = transactions.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0);
+    const expense = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
+    const balance = income - expense;
+    document.getElementById('sumIncome').textContent  = `+${fmt(income)}`;
+    document.getElementById('sumExpense').textContent = `-${fmt(expense)}`;
+    const balEl = document.getElementById('sumBalance');
+    balEl.textContent = (balance >= 0 ? '+' : '') + fmt(balance);
+    balEl.className = `acct-summary-value ${balance >= 0 ? 'text-green' : 'text-red'}`;
+}
+
+function renderList() {
+    aEmpty.classList.toggle('hidden', transactions.length > 0);
+    aList.innerHTML = '';
+    transactions.forEach(t => {
+        const item = document.createElement('div');
+        item.className = 'acct-item';
+        item.innerHTML = `
+            <div class="acct-item-left">
+                <span class="acct-category">${t.category ?? ''}</span>
+                <span class="acct-date text-muted">${t.date}</span>
+                ${t.note ? `<span class="acct-note text-muted">${t.note}</span>` : ''}
+            </div>
+            <div class="acct-item-right">
+                <span class="acct-amount ${t.type === 'income' ? 'text-green' : 'text-red'}">
+                    ${t.type === 'income' ? '+' : '-'}${fmt(t.amount)}
+                </span>
+                <button class="reminder-delete" data-id="${t.id}">✕</button>
+            </div>
+        `;
+        item.querySelector('.reminder-delete').addEventListener('click', async e => {
+            const id = e.currentTarget.dataset.id;
+            await fetch(`${DB}?id=eq.${id}`, { method: 'DELETE', headers: dbHeaders });
+            transactions = transactions.filter(x => String(x.id) !== id);
+            updateSummary();
+            renderList();
+        });
+        aList.appendChild(item);
+    });
+}
+
+document.getElementById('aAddBtn').addEventListener('click', async () => {
+    const amount = parseFloat(aAmount.value);
+    if (!amount || amount <= 0) { aAmount.focus(); return; }
+    const res  = await fetch(DB, {
+        method: 'POST',
+        headers: { ...dbHeaders, 'Prefer': 'return=representation' },
+        body: JSON.stringify({
+            type: currentType,
+            amount,
+            category: aCategory.value,
+            note: aNote.value.trim() || null,
+            date: aDate.value,
+        }),
+    });
+    const rows = await res.json();
+    transactions.unshift(rows[0]);
+    aAmount.value = ''; aNote.value = '';
+    // re-sort by date desc
+    transactions.sort((a, b) => b.date.localeCompare(a.date));
+    updateSummary();
+    renderList();
+});
+
+monthPicker.addEventListener('change', loadTransactions);
+
+document.querySelectorAll('.theme-btn').forEach(btn =>
+    btn.addEventListener('click', () => applyThemeBase(btn.dataset.theme))
+);
+
+loadTransactions();
+</script>
+</body>
+</html>

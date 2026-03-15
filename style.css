@@ -944,3 +944,218 @@ body.theme-photo .portal-bg {
 }
 
 
+
+/* ─── Navigation ──────────────────────────────── */
+
+.portal-nav {
+    display: flex;
+    gap: 0.375rem;
+}
+
+.nav-link {
+    font-size: 0.75rem;
+    font-family: ui-monospace, monospace;
+    color: var(--muted);
+    text-decoration: none;
+    padding: 0.2rem 0.625rem;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.nav-link:hover { color: var(--primary); border-color: var(--border); }
+.nav-link.active { color: var(--accent); border-color: var(--accent); }
+
+/* ─── Vocabulary ──────────────────────────────── */
+
+.vocab-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+
+.vocab-form .btn { grid-column: 1 / -1; }
+
+.vocab-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.vocab-filter-tabs { display: flex; gap: 0.25rem; flex-shrink: 0; }
+
+.vocab-filter {
+    font-size: 0.7rem;
+    font-family: ui-monospace, monospace;
+    padding: 0.2rem 0.5rem;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.vocab-filter:hover { color: var(--primary); }
+.vocab-filter.active { color: var(--accent); border-color: var(--accent); }
+
+.vocab-list { display: flex; flex-direction: column; gap: 0.625rem; }
+
+.vocab-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    transition: border-color 0.15s;
+}
+
+.vocab-card.learned { border-color: var(--green); opacity: 0.7; }
+
+.vocab-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.25rem;
+}
+
+.vocab-word {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--primary);
+    margin-right: 0.5rem;
+}
+
+.vocab-phonetic {
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-family: ui-monospace, monospace;
+}
+
+.vocab-def {
+    font-size: 0.85rem;
+    color: var(--primary);
+    margin-bottom: 0.2rem;
+}
+
+.vocab-example {
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-style: italic;
+}
+
+.vocab-actions { display: flex; gap: 0.375rem; align-items: center; flex-shrink: 0; }
+
+.btn-learn {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.btn-learn:hover { color: var(--green); border-color: var(--green); }
+
+/* ─── Accounting ──────────────────────────────── */
+
+.acct-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+}
+
+.acct-summary-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+    text-align: center;
+}
+
+.acct-summary-label {
+    font-size: 0.7rem;
+    color: var(--muted);
+    font-family: ui-monospace, monospace;
+    margin-bottom: 0.375rem;
+}
+
+.acct-summary-value {
+    font-size: 1.25rem;
+    font-family: ui-monospace, monospace;
+    font-weight: 700;
+}
+
+.acct-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+
+.acct-type-tabs {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 0.375rem;
+}
+
+.acct-type-btn {
+    flex: 1;
+    padding: 0.4rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.acct-type-btn.active[data-type="expense"] { color: var(--red);   border-color: var(--red);   background: rgba(248,81,73,0.08); }
+.acct-type-btn.active[data-type="income"]  { color: var(--green); border-color: var(--green); background: rgba(63,185,80,0.08); }
+
+.acct-form .btn { grid-column: 1 / -1; }
+
+.acct-list { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.acct-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.625rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.acct-item-left {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.acct-item-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-shrink: 0;
+}
+
+.acct-category {
+    font-size: 0.85rem;
+    color: var(--primary);
+    font-weight: 500;
+}
+
+.acct-date, .acct-note {
+    font-size: 0.7rem;
+    font-family: ui-monospace, monospace;
+}
+
+.acct-amount {
+    font-family: ui-monospace, monospace;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.text-green { color: var(--green); }
+.text-red   { color: var(--red);   }
