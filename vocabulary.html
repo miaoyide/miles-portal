@@ -34,10 +34,14 @@
         <div class="card">
             <h2 class="widget-title mb-4">➕ 新增單字</h2>
             <div class="vocab-form">
-                <input id="vWord"    type="text" class="input" placeholder="單字 *" />
-                <input id="vPhonetic" type="text" class="input" placeholder="音標（選填）" />
-                <input id="vDef"     type="text" class="input" placeholder="定義 *" />
-                <input id="vExample" type="text" class="input" placeholder="例句（選填）" />
+                <div class="vocab-lookup-row">
+                    <input id="vWord" type="text" class="input flex-1" placeholder="輸入英文單字 *" />
+                    <button id="vLookupBtn" class="btn">查詢</button>
+                </div>
+                <p id="vLookupStatus" class="text-muted text-xs font-mono hidden"></p>
+                <input id="vPhonetic" type="text" class="input" placeholder="音標（自動填入）" />
+                <input id="vDef"      type="text" class="input" placeholder="中文定義 *（自動填入）" />
+                <input id="vExample"  type="text" class="input" placeholder="例句（自動填入）" />
                 <button id="vAddBtn" class="btn">新增</button>
             </div>
         </div>
@@ -65,13 +69,76 @@ const DB = `${SUPABASE_URL}/rest/v1/vocabulary`;
 let allWords = [];
 let currentFilter = 'all';
 
-const vList    = document.getElementById('vList');
-const vEmpty   = document.getElementById('vEmpty');
-const vSearch  = document.getElementById('vSearch');
-const vWord    = document.getElementById('vWord');
-const vPhonetic= document.getElementById('vPhonetic');
-const vDef     = document.getElementById('vDef');
-const vExample = document.getElementById('vExample');
+const vList         = document.getElementById('vList');
+const vEmpty        = document.getElementById('vEmpty');
+const vSearch       = document.getElementById('vSearch');
+const vWord         = document.getElementById('vWord');
+const vPhonetic     = document.getElementById('vPhonetic');
+const vDef          = document.getElementById('vDef');
+const vExample      = document.getElementById('vExample');
+const vLookupBtn    = document.getElementById('vLookupBtn');
+const vLookupStatus = document.getElementById('vLookupStatus');
+
+function setLookupStatus(msg, isError = false) {
+    vLookupStatus.textContent = msg;
+    vLookupStatus.classList.toggle('hidden', !msg);
+    vLookupStatus.style.color = isError ? 'var(--red)' : 'var(--muted)';
+}
+
+async function lookupWord() {
+    const word = vWord.value.trim();
+    if (!word) { vWord.focus(); return; }
+
+    setLookupStatus('查詢中...');
+    vLookupBtn.disabled = true;
+
+    try {
+        // 1. Free Dictionary API
+        const dictRes = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
+        if (!dictRes.ok) { setLookupStatus(`找不到「${word}」的資料`, true); return; }
+
+        const dictData = await dictRes.json();
+        const entry    = dictData[0];
+
+        // 音標
+        const phonetic = entry.phonetic
+            || entry.phonetics?.find(p => p.text)?.text
+            || '';
+
+        // 第一個英文定義 + 例句
+        let engDef  = '';
+        let example = '';
+        for (const meaning of entry.meanings ?? []) {
+            for (const def of meaning.definitions ?? []) {
+                if (!engDef) engDef = def.definition;
+                if (!example && def.example) example = def.example;
+                if (engDef && example) break;
+            }
+            if (engDef && example) break;
+        }
+
+        vPhonetic.value = phonetic;
+        vExample.value  = example;
+
+        // 2. MyMemory 翻譯定義成中文
+        if (engDef) {
+            setLookupStatus('翻譯中...');
+            const transRes  = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(engDef)}&langpair=en|zh-TW`);
+            const transData = await transRes.json();
+            const zhDef     = transData.responseData?.translatedText ?? engDef;
+            vDef.value = zhDef;
+        }
+
+        setLookupStatus('✓ 已自動填入，請確認後按新增');
+    } catch (err) {
+        setLookupStatus('查詢失敗：' + err.message, true);
+    } finally {
+        vLookupBtn.disabled = false;
+    }
+}
+
+vLookupBtn.addEventListener('click', lookupWord);
+vWord.addEventListener('keydown', e => { if (e.key === 'Enter') lookupWord(); });
 
 async function loadWords() {
     const res  = await fetch(`${DB}?order=created_at.desc`, { headers: dbHeaders });
@@ -160,7 +227,7 @@ document.querySelectorAll('.theme-btn').forEach(btn =>
     btn.addEventListener('click', () => applyThemeBase(btn.dataset.theme))
 );
 
-[vWord, vPhonetic, vDef, vExample].forEach((el, i, arr) => {
+[vPhonetic, vDef, vExample].forEach((el, i, arr) => {
     el.addEventListener('keydown', e => {
         if (e.key === 'Enter') i < arr.length - 1 ? arr[i+1].focus() : document.getElementById('vAddBtn').click();
     });

@@ -1159,3 +1159,9 @@ body.theme-photo .portal-bg {
 
 .text-green { color: var(--green); }
 .text-red   { color: var(--red);   }
+
+.vocab-lookup-row {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 0.5rem;
+}
