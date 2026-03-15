@@ -666,11 +666,53 @@ function sendNotification(title, body) {
     sendTelegram(`${title}\n${body}`);
 }
 
-// ── 統一儲存（type: 'daily' | 'interval'）──
-function loadAllReminders() {
-    try { return JSON.parse(localStorage.getItem('allReminders') || '[]'); } catch { return []; }
+// ── 提醒（Supabase DB）──
+const DB_URL    = `${SUPABASE_URL}/rest/v1/reminders`;
+const dbHeaders = {
+    'apikey': SUPABASE_ANON_KEY,
+    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+    'Content-Type': 'application/json',
+};
+
+let allReminders = [];
+
+function normalizeReminder(r) {
+    return { ...r, id: String(r.id), intervalMs: r.interval_min ? r.interval_min * 60_000 : undefined };
 }
-function saveAllReminders(list) { localStorage.setItem('allReminders', JSON.stringify(list)); }
+
+async function syncReminders() {
+    try {
+        const res = await fetch(`${DB_URL}?order=id.asc`, { headers: dbHeaders });
+        if (!res.ok) throw new Error(res.status);
+        allReminders = (await res.json()).map(normalizeReminder);
+        allReminders.forEach(r => {
+            if (r.type === 'interval' && r.active && !runningIntervals.has(r.id)) startIntervalTimer(r);
+        });
+        renderAllReminders();
+    } catch (err) { console.error('syncReminders failed', err); }
+}
+
+async function dbAdd(data) {
+    const res = await fetch(DB_URL, {
+        method: 'POST',
+        headers: { ...dbHeaders, 'Prefer': 'return=representation' },
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error(res.status);
+    return normalizeReminder((await res.json())[0]);
+}
+
+async function dbDelete(id) {
+    await fetch(`${DB_URL}?id=eq.${id}`, { method: 'DELETE', headers: dbHeaders });
+}
+
+async function dbToggle(id, active) {
+    await fetch(`${DB_URL}?id=eq.${id}`, {
+        method: 'PATCH',
+        headers: { ...dbHeaders, 'Prefer': 'return=representation' },
+        body: JSON.stringify({ active }),
+    });
+}
 
 // ── 間隔計時器 Map<id, { handle, nextFire }> ──
 const runningIntervals = new Map();
@@ -711,15 +753,13 @@ function stopIntervalTimer(id) {
 const unifiedListEl  = document.getElementById('unifiedReminderList');
 const unifiedEmptyEl = document.getElementById('unifiedReminderEmpty');
 
-// 每日提醒已觸發記錄
 const firedSet = new Set();
 
 function renderAllReminders() {
-    const list = loadAllReminders();
     unifiedListEl.innerHTML = '';
-    unifiedEmptyEl.classList.toggle('hidden', list.length > 0);
+    unifiedEmptyEl.classList.toggle('hidden', allReminders.length > 0);
 
-    list.forEach(r => {
+    allReminders.forEach(r => {
         const isInterval = r.type === 'interval';
         const entry = runningIntervals.get(r.id);
         const badge = isInterval ? `每${formatIntervalBadge(r.intervalMs)}` : r.time;
@@ -737,21 +777,18 @@ function renderAllReminders() {
             <button class="reminder-delete">✕</button>
         `;
 
-        item.querySelector('.reminder-toggle').addEventListener('click', () => {
-            const list = loadAllReminders();
-            const idx = list.findIndex(x => x.id === r.id);
-            if (idx === -1) return;
-            list[idx].active = !list[idx].active;
-            saveAllReminders(list);
-            if (list[idx].type === 'interval') {
-                list[idx].active ? startIntervalTimer(list[idx]) : stopIntervalTimer(r.id);
-            }
+        item.querySelector('.reminder-toggle').addEventListener('click', async () => {
+            const newActive = !r.active;
+            await dbToggle(r.id, newActive);
+            r.active = newActive;
+            if (r.type === 'interval') newActive ? startIntervalTimer(r) : stopIntervalTimer(r.id);
             renderAllReminders();
         });
 
-        item.querySelector('.reminder-delete').addEventListener('click', () => {
+        item.querySelector('.reminder-delete').addEventListener('click', async () => {
             if (isInterval) stopIntervalTimer(r.id);
-            saveAllReminders(loadAllReminders().filter(x => x.id !== r.id));
+            await dbDelete(r.id);
+            allReminders = allReminders.filter(x => x.id !== r.id);
             renderAllReminders();
         });
 
@@ -760,7 +797,7 @@ function renderAllReminders() {
 }
 
 function updateAllCountdowns() {
-    loadAllReminders().forEach(r => {
+    allReminders.forEach(r => {
         if (r.type !== 'interval' || !r.active) return;
         const el = unifiedListEl.querySelector(`[data-id="${r.id}"] .reminder-countdown`);
         const entry = runningIntervals.get(r.id);
@@ -772,7 +809,7 @@ function updateAllCountdowns() {
 function checkDailyReminders() {
     const now  = new Date();
     const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    loadAllReminders().forEach(r => {
+    allReminders.forEach(r => {
         if (r.type !== 'daily' || !r.active || r.time !== hhmm) return;
         const key = `${r.id}-${hhmm}`;
         if (firedSet.has(key)) return;
@@ -816,29 +853,29 @@ function switchTab(type) {
     modalIntervalFields.classList.toggle('hidden', type !== 'interval');
 }
 
-function confirmAddReminder() {
+async function confirmAddReminder() {
     const label = modalLabelInput.value.trim();
     if (!label) { modalLabelInput.focus(); return; }
 
-    const list = loadAllReminders();
-
+    let data;
     if (modalType === 'daily') {
         const time = modalTimeInput.value;
         if (!time) { modalTimeInput.focus(); return; }
-        list.push({ id: Date.now().toString(), type: 'daily', label, time, active: true });
+        data = { type: 'daily', label, time, active: true };
     } else {
         const value = parseInt(modalIntervalValue.value, 10);
         const unit  = parseInt(modalIntervalUnit.value, 10);
         if (isNaN(value) || value < 1) { modalIntervalValue.focus(); return; }
-        const intervalMs = value * unit;
-        const r = { id: Date.now().toString(), type: 'interval', label, intervalMs, active: true };
-        list.push(r);
-        startIntervalTimer(r);
+        data = { type: 'interval', label, interval_min: (value * unit) / 60_000, active: true };
     }
 
-    saveAllReminders(list);
-    renderAllReminders();
-    closeModal();
+    try {
+        const r = await dbAdd(data);
+        allReminders.push(r);
+        if (r.type === 'interval' && r.active) startIntervalTimer(r);
+        renderAllReminders();
+        closeModal();
+    } catch (err) { console.error('新增失敗', err); }
 }
 
 openModalBtn.addEventListener('click', openModal);
@@ -850,31 +887,8 @@ modalTabs.forEach(t => t.addEventListener('click', () => switchTab(t.dataset.typ
 modalLabelInput.addEventListener('keydown', e => { if (e.key === 'Enter') confirmAddReminder(); });
 
 // ── 初始化 ──
-// 遷移舊資料
-(function migrateOldData() {
-    const old = localStorage.getItem('reminders');
-    const oldInterval = localStorage.getItem('intervalReminders');
-    if (!old && !oldInterval) return;
-    const merged = loadAllReminders();
-    if (old) {
-        try {
-            JSON.parse(old).forEach(r => merged.push({ ...r, type: 'daily' }));
-        } catch {}
-        localStorage.removeItem('reminders');
-    }
-    if (oldInterval) {
-        try {
-            JSON.parse(oldInterval).forEach(r => merged.push({ ...r, type: 'interval' }));
-        } catch {}
-        localStorage.removeItem('intervalReminders');
-    }
-    saveAllReminders(merged);
-})();
-
-// 恢復間隔提醒
-loadAllReminders().filter(r => r.type === 'interval' && r.active).forEach(startIntervalTimer);
-
-renderAllReminders();
+syncReminders();
+setInterval(syncReminders, 30_000);
 
 setInterval(checkDailyReminders, 10_000);
 checkDailyReminders();
