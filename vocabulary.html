@@ -127,8 +127,23 @@ async function lookupWord() {
             ${lookupPhonetic ? `<span class="vocab-phonetic">${lookupPhonetic}</span>` : ''}
         `;
 
-        // All meanings + definitions
+        // Collect all definitions for batch translation
+        const allDefs = (entry.meanings ?? []).flatMap(m =>
+            (m.definitions ?? []).map(d => ({ ...d, partOfSpeech: m.partOfSpeech }))
+        );
+
+        setLookupStatus('翻譯中...');
+        const transRes  = await fetch(`${SUPABASE_URL}/functions/v1/deepl`, {
+            method: 'POST',
+            headers: { ...dbHeaders },
+            body: JSON.stringify({ text: allDefs.map(d => d.definition) }),
+        });
+        const transData = await transRes.json();
+        const zhList    = transData.translated ?? [];
+
+        // Render all meanings with Chinese translations
         vLookupMeanings.innerHTML = '';
+        let defIndex = 0;
         (entry.meanings ?? []).forEach(meaning => {
             const posLabel = POS_LABEL[meaning.partOfSpeech] || meaning.partOfSpeech;
             const section  = document.createElement('div');
@@ -136,6 +151,7 @@ async function lookupWord() {
             section.innerHTML = `<div class="lookup-pos-label">${posLabel}</div>`;
 
             (meaning.definitions ?? []).forEach((def, i) => {
+                const zh   = zhList[defIndex++] || '';
                 const item = document.createElement('div');
                 item.className = 'lookup-def-item';
                 item.innerHTML = `
@@ -143,10 +159,11 @@ async function lookupWord() {
                         <span class="lookup-def-num">${i + 1}.</span>
                         <span>${def.definition}</span>
                     </div>
+                    ${zh ? `<div class="lookup-zh">${zh}</div>` : ''}
                     ${def.example ? `<div class="lookup-example">"${def.example}"</div>` : ''}
-                    <button class="btn-select-def">選用此定義</button>
+                    <button class="btn-select-def">選用</button>
                 `;
-                item.querySelector('.btn-select-def').addEventListener('click', () => selectDef(def));
+                item.querySelector('.btn-select-def').addEventListener('click', () => selectDef(def, zh));
                 section.appendChild(item);
             });
 
@@ -154,7 +171,7 @@ async function lookupWord() {
         });
 
         vLookupResults.classList.remove('hidden');
-        setLookupStatus('點選「選用此定義」以翻譯並填入');
+        setLookupStatus('點選「選用」以填入表單');
     } catch (err) {
         setLookupStatus('查詢失敗：' + err.message, true);
     } finally {
@@ -162,24 +179,13 @@ async function lookupWord() {
     }
 }
 
-async function selectDef(def) {
-    setLookupStatus('翻譯中...');
-    try {
-        const transRes  = await fetch(`${SUPABASE_URL}/functions/v1/deepl`, {
-            method: 'POST',
-            headers: { ...dbHeaders },
-            body: JSON.stringify({ text: def.definition }),
-        });
-        const transData = await transRes.json();
-        vPhonetic.value = lookupPhonetic;
-        vDef.value      = transData.translated || def.definition;
-        vExample.value  = def.example || '';
-        vSaveForm.classList.remove('hidden');
-        vSaveForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        setLookupStatus('✓ 已填入，確認後按「新增至單字庫」');
-    } catch (err) {
-        setLookupStatus('翻譯失敗：' + err.message, true);
-    }
+function selectDef(def, zh) {
+    vPhonetic.value = lookupPhonetic;
+    vDef.value      = zh || def.definition;
+    vExample.value  = def.example || '';
+    vSaveForm.classList.remove('hidden');
+    vSaveForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    setLookupStatus('✓ 已填入，確認後按「新增至單字庫」');
 }
 
 vLookupBtn.addEventListener('click', lookupWord);

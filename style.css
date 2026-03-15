@@ -1236,3 +1236,9 @@ body.theme-photo .portal-bg {
 }
 
 .btn-select-def:hover { color: var(--accent); border-color: var(--accent); }
+
+.lookup-zh {
+    font-size: 0.82rem;
+    color: var(--accent);
+    padding-left: 1rem;
+}
