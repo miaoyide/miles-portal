@@ -666,12 +666,8 @@ function sendNotification(title, body) {
 }
 
 // ── 提醒（Supabase DB）──
-const DB_URL    = `${SUPABASE_URL}/rest/v1/reminders`;
-const dbHeaders = {
-    'apikey': SUPABASE_ANON_KEY,
-    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-    'Content-Type': 'application/json',
-};
+const DB_URL = `${SUPABASE_URL}/rest/v1/reminders`;
+// dbHeaders comes from config.js
 
 let allReminders = [];
 
