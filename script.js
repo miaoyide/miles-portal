@@ -4,6 +4,12 @@
 
 const SUPABASE_URL      = 'https://naagujwufjeqsgwmyrcv.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5hYWd1and1ZmplcXNnd215cmN2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzMjc0MTcsImV4cCI6MjA4ODkwMzQxN30.6MFjNVe2zz1lwGVYx9BSFco7hEZTjvBueGQABrq1apM';
+const PORTAL_SECRET     = '3a81f5833dc5973c011454c8fd538af1405410dc885230ae';
+
+const sbHeaders = {
+    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+    'x-portal-secret': PORTAL_SECRET,
+};
 
 const UNSPLASH_QUERY = 'query=landscape,nature&orientation=landscape';
 
@@ -31,7 +37,7 @@ async function loadUnsplashPhoto() {
 
     try {
         const res = await fetch(`${SUPABASE_URL}/functions/v1/unsplash?${UNSPLASH_QUERY}`, {
-            headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
+            headers: sbHeaders,
         });
         if (!res.ok) throw new Error();
         const data = await res.json();
@@ -229,7 +235,7 @@ async function searchCity() {
     try {
         const query = new URLSearchParams({ q: city, units: 'metric', lang: 'zh_tw', endpoint: 'weather' });
         const res = await fetch(`${WEATHER_FN}?${query}`, {
-            headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
+            headers: sbHeaders,
         });
         if (!res.ok) throw new Error(res.status === 404 ? '找不到該城市，請確認英文拼寫' : `查詢失敗（${res.status}）`);
         const data = await res.json();
@@ -652,10 +658,7 @@ async function sendTelegram(text) {
     try {
         await fetch(`${SUPABASE_URL}/functions/v1/send-telegram`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-            },
+            headers: { ...sbHeaders, 'Content-Type': 'application/json' },
             body: JSON.stringify({ text }),
         });
     } catch {}
