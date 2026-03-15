@@ -271,7 +271,7 @@ clearBtn.addEventListener('click', clearSearch);
 
 /* ─── Currency ────────────────────────────────── */
 
-const BOT_CSV_URL = 'https://corsproxy.io/?' + encodeURIComponent('https://rate.bot.com.tw/xrt/flcsv/0/day');
+const BOT_CSV_URL = `${SUPABASE_URL}/functions/v1/taiwan-rates`;
 
 const DISPLAY_CURRENCIES = ['USD', 'JPY', 'EUR', 'CNY', 'GBP', 'HKD', 'THB'];
 const CURRENCY_NAMES = { USD: '美元', JPY: '日圓', EUR: '歐元', CNY: '人民幣', GBP: '英鎊', HKD: '港幣', THB: '泰銖' };
@@ -313,9 +313,9 @@ function parseBotCsv(csv) {
 async function fetchRates() {
     showCurrency('loading');
     try {
-        const res = await fetch(BOT_CSV_URL);
+        const res = await fetch(BOT_CSV_URL, { headers: sbHeaders });
         if (!res.ok) throw new Error(`台銀 API 失敗（${res.status}）`);
-        const csv = new TextDecoder('big5').decode(await res.arrayBuffer());
+        const csv = await res.text();
         ratesCache = parseBotCsv(csv);
         if (Object.keys(ratesCache).length === 0) throw new Error('匯率資料解析失敗');
 
@@ -434,13 +434,10 @@ fetchRates();
 
 /* ─── Stocks ──────────────────────────────────── */
 
-const proxy = url => 'https://corsproxy.io/?' + encodeURIComponent(url);
-
-const TWSE_ALL_URL = proxy('https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL');
-const TWSE_IDX_URL = proxy('https://openapi.twse.com.tw/v1/exchangeReport/MI_INDEX');
-const TPEX_ALL_URL = proxy('https://www.tpex.org.tw/openapi/v1/tpex_esb_perstock_quotes');
-const TWSE_DAY_BASE = 'https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY';
-const TPEX_DAY_BASE = 'https://www.tpex.org.tw/openapi/v1/tpex_esb_perstock_quotes';
+const STOCKS_FN    = `${SUPABASE_URL}/functions/v1/taiwan-stocks`;
+const TWSE_ALL_URL = `${STOCKS_FN}?api=tse-all`;
+const TWSE_IDX_URL = `${STOCKS_FN}?api=tse-idx`;
+const TPEX_ALL_URL = `${STOCKS_FN}?api=tpex-all`;
 
 const WATCH_LIST = [
     { code: '2330', name: '台積電',     market: 'tse' },
@@ -474,7 +471,7 @@ async function fetchTseFallback() {
     const tseStocks = WATCH_LIST.filter(s => s.market === 'tse');
     const results = await Promise.allSettled(
         tseStocks.map(({ code }) =>
-            fetch(proxy(`${TWSE_DAY_BASE}?stockNo=${code}`)).then(safeJson)
+            fetch(`${STOCKS_FN}?api=tse-stock&stockNo=${code}`, { headers: sbHeaders }).then(safeJson)
         )
     );
     return results.flatMap((r, i) => {
@@ -489,7 +486,7 @@ async function fetchTpexFallback() {
     const otcStocks = WATCH_LIST.filter(s => s.market === 'otc');
     const results = await Promise.allSettled(
         otcStocks.map(({ code }) =>
-            fetch(proxy(`${TPEX_DAY_BASE}?stockNo=${code}`)).then(safeJson)
+            fetch(`${STOCKS_FN}?api=tpex-stock&stockNo=${code}`, { headers: sbHeaders }).then(safeJson)
         )
     );
     return results.flatMap((r, i) => {
@@ -503,9 +500,9 @@ async function fetchStocks() {
     showStock('loading');
     try {
         const [tseRes, tpexRes, idxRes] = await Promise.allSettled([
-            fetch(TWSE_ALL_URL),
-            fetch(TPEX_ALL_URL),
-            fetch(TWSE_IDX_URL),
+            fetch(TWSE_ALL_URL, { headers: sbHeaders }),
+            fetch(TPEX_ALL_URL, { headers: sbHeaders }),
+            fetch(TWSE_IDX_URL, { headers: sbHeaders }),
         ]);
 
         let tseData   = tseRes.status  === 'fulfilled' ? await safeJson(tseRes.value)  : [];
