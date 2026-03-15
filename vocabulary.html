@@ -120,13 +120,16 @@ async function lookupWord() {
         vPhonetic.value = phonetic;
         vExample.value  = example;
 
-        // 2. MyMemory 翻譯定義成中文
+        // 2. DeepL 翻譯定義成中文
         if (engDef) {
             setLookupStatus('翻譯中...');
-            const transRes  = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(engDef)}&langpair=en|zh-TW`);
+            const transRes  = await fetch(`${SUPABASE_URL}/functions/v1/deepl`, {
+                method: 'POST',
+                headers: { ...dbHeaders },
+                body: JSON.stringify({ text: engDef }),
+            });
             const transData = await transRes.json();
-            const zhDef     = transData.responseData?.translatedText ?? engDef;
-            vDef.value = zhDef;
+            vDef.value = transData.translated || engDef;
         }
 
         setLookupStatus('✓ 已自動填入，請確認後按新增');
